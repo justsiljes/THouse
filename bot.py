@@ -17,12 +17,10 @@ bot = commands.Bot(command_prefix="!", intents=intents)
 def find_member_flexible(guild, input_username):
     target = input_username.strip().lower()
     
-    # 1. البحث بالتطابق المباشر لليوزر أو ID أو Display Name
     for m in guild.members:
         if m.name.lower() == target or str(m.id) == target or m.display_name.lower() == target:
             return m
             
-    # 2. البحث المرن الجزئي (في حال وجود فارق بسيط بالأحرف)
     for m in guild.members:
         if target in m.name.lower() or target in m.display_name.lower():
             return m
@@ -47,6 +45,9 @@ class ReasonModal(Modal):
         self.add_item(self.reason_input)
 
     async def on_submit(self, interaction: discord.Interaction):
+        # تأجيل الرد فوراً لمنع انتهاء مهلة الـ Modal (3 ثوانٍ)
+        await interaction.response.defer(ephemeral=True)
+
         guild = interaction.guild
         admin_mention = interaction.user.mention
         reason = self.reason_input.value.strip()
@@ -57,7 +58,10 @@ class ReasonModal(Modal):
             if member:
                 role = guild.get_role(ROLE_ID)
                 if role:
-                    await member.add_roles(role)
+                    try:
+                        await member.add_roles(role)
+                    except Exception:
+                        pass
                 try:
                     await member.send(
                         f"🎉 **مبارك! تم قبول تقديمك في عائلة آل تارغيريان.**\n"
@@ -69,7 +73,7 @@ class ReasonModal(Modal):
                     pass
                 
                 self.view_instance.disable_all_items()
-                await interaction.response.edit_message(
+                await interaction.message.edit(
                     content=(
                         f"✅ **تم قبول التقديم الخاص بـ:** {member.mention}\n"
                         f"👑 **بواسطة المشرف المسؤول:** {admin_mention}\n"
@@ -77,8 +81,9 @@ class ReasonModal(Modal):
                     ),
                     view=self.view_instance
                 )
+                await interaction.followup.send(f"✅ تم قبول {member.mention} بنجاح.", ephemeral=True)
             else:
-                await interaction.response.send_message(
+                await interaction.followup.send(
                     f"⚠️ لم يتم العثور على `{self.applicant_username}` في السيرفر! تأكد من كتابة اليوزر بدقة.", 
                     ephemeral=True
                 )
@@ -95,7 +100,7 @@ class ReasonModal(Modal):
                     pass
                 
                 self.view_instance.disable_all_items()
-                await interaction.response.edit_message(
+                await interaction.message.edit(
                     content=(
                         f"❌ **تم رفض التقديم الخاص بـ:** {member.mention}\n"
                         f"🛑 **بواسطة المشرف المسؤول:** {admin_mention}\n"
@@ -103,9 +108,10 @@ class ReasonModal(Modal):
                     ),
                     view=self.view_instance
                 )
+                await interaction.followup.send(f"❌ تم رفض {member.mention}.", ephemeral=True)
             else:
                 self.view_instance.disable_all_items()
-                await interaction.response.edit_message(
+                await interaction.message.edit(
                     content=(
                         f"❌ **تم رفض التقديم الخاص بـ:** `{self.applicant_username}` (العضو ليس بالسيرفر)\n"
                         f"🛑 **بواسطة المشرف المسؤول:** {admin_mention}\n"
@@ -113,6 +119,7 @@ class ReasonModal(Modal):
                     ),
                     view=self.view_instance
                 )
+                await interaction.followup.send("❌ تم الرفض (العضو غير موجود بالسيرفر).", ephemeral=True)
 
 class ApplicationView(View):
     def __init__(self, applicant_username):
