@@ -11,23 +11,30 @@ APPLICATIONS_CHANNEL_ID = 1535593260565663794
 intents = discord.Intents.default()
 intents.members = True
 intents.message_content = True
+intents.guilds = True
 
 bot = commands.Bot(command_prefix="!", intents=intents)
 
-def find_member_flexible(guild, input_username):
-    clean_input = input_username.strip().lower().replace(".", "").replace("_", "")
+async def find_member_flexible(guild, input_username):
     target = input_username.strip().lower()
+    clean_target = target.replace(".", "").replace("_", "")
     
-    # 1. مطابقة دقيقة
+    # محاولة جلب الأعضاء لضمان وجود القائمة
+    try:
+        await guild.chunk()
+    except Exception:
+        pass
+
+    # 1. البحث بالتطابق المباشر أو الـ ID
     for m in guild.members:
         if m.name.lower() == target or str(m.id) == target or m.display_name.lower() == target:
             return m
-            
-    # 2. مطابقة مرنة
+
+    # 2. البحث بالتطابق المرن
     for m in guild.members:
         clean_name = m.name.lower().replace(".", "").replace("_", "")
         clean_display = m.display_name.lower().replace(".", "").replace("_", "")
-        if clean_input and (clean_input in clean_name or clean_input in clean_display or clean_name in clean_input):
+        if clean_target and (clean_target in clean_name or clean_target in clean_display or clean_name in clean_target):
             return m
             
     return None
@@ -56,27 +63,28 @@ class ReasonModal(Modal):
         admin_mention = interaction.user.mention
         reason = self.reason_input.value.strip()
         
-        member = find_member_flexible(guild, self.applicant_username)
+        member = await find_member_flexible(guild, self.applicant_username)
         applicant_display = member.mention if member else f"`{self.applicant_username}`"
 
         # تعطيل أزرار رسالة التحكم (الرسالة الثانية)
         self.view_instance.disable_all_items()
         try:
             await interaction.message.edit(view=self.view_instance)
-        except Exception:
-            pass
+        except Exception as e:
+            print(f"Edit message error: {e}")
 
         if self.action_type == "accept":
-            # 1. إضافة الرتبة للمتقدم
+            # 1. إعطاء الرتبة
             if member:
                 role = guild.get_role(ROLE_ID)
                 if role:
                     try:
                         await member.add_roles(role)
+                        print(f"Role added to {member.name}")
                     except Exception as e:
-                        print(f"Error adding role: {e}")
-
-                # 2. إرسال للخاص (عند القبول)
+                        print(f"Failed to add role: {e}")
+                
+                # 2. إرسال للخاص عند القبول
                 try:
                     await member.send(
                         f"🎉 أهلاً بك {member.mention}!\n"
@@ -84,19 +92,19 @@ class ReasonModal(Modal):
                         f"✨ تم إعطاؤك الرتبة بالسيرفر."
                     )
                 except Exception as e:
-                    print(f"Error sending DM: {e}")
+                    print(f"Failed to send DM: {e}")
 
-            # 3. إرسال الرسالة الثالثة (Log) في روم التقديمات
+            # 3. إرسال الرسالة الثالثة (السجل) في روم التقديمات
             await interaction.channel.send(
                 f"✅ **[ سجل القرار - قبول ]**\n"
                 f"👤 **المتقدم:** {applicant_display}\n"
                 f"👑 **المشرف المسؤول:** {admin_mention}\n"
                 f"📝 **سبب القبول:** {reason}"
             )
-            await interaction.followup.send(f"✅ تم قبول الطلب بنجاح.", ephemeral=True)
+            await interaction.followup.send(f"✅ تم قبول الطلب وإعطاء الرتبة بنجاح.", ephemeral=True)
 
         elif self.action_type == "reject":
-            # 1. إرسال للخاص (عند الرفض)
+            # 1. إرسال للخاص عند الرفض
             if member:
                 try:
                     await member.send(
@@ -106,9 +114,9 @@ class ReasonModal(Modal):
                         f"📝 **سبب الرفض:** {reason}"
                     )
                 except Exception as e:
-                    print(f"Error sending DM: {e}")
+                    print(f"Failed to send DM: {e}")
 
-            # 2. إرسال الرسالة الثالثة (Log) في روم التقديمات
+            # 2. إرسال الرسالة الثالثة (السجل) في روم التقديمات
             await interaction.channel.send(
                 f"❌ **[ سجل القرار - رفض ]**\n"
                 f"👤 **المتقدم:** {applicant_display}\n"
