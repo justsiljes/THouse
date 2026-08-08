@@ -105,7 +105,7 @@ async def start_web_server():
 async def main():
     await start_web_server()
     # استبدل التوكن هنا
-    await bot.start("YOUR_NEW_DISCORD_BOT_TOKEN")
+    await bot.start("MTUzNTU5NTM4Mzg2OTI4NDQyMw.GtrwhM.pxtKfET5DPFfZIIV-Vi3DUl_Z_qYynoHKETHr4")
 
 if __name__ == "__main__":
     asyncio.run(main())
