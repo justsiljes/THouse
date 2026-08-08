@@ -3,7 +3,7 @@ import asyncio
 from aiohttp import web
 import discord
 from discord.ext import commands
-from discord.ui import Button, View
+from discord.ui import Button, View, Modal, TextInput
 
 ROLE_ID = 1534885735180664862 
 APPLICATIONS_CHANNEL_ID = 1535593260565663794 
@@ -14,6 +14,106 @@ intents.message_content = True
 
 bot = commands.Bot(command_prefix="!", intents=intents)
 
+def find_member_flexible(guild, input_username):
+    target = input_username.strip().lower()
+    
+    # 1. البحث بالتطابق المباشر لليوزر أو ID أو Display Name
+    for m in guild.members:
+        if m.name.lower() == target or str(m.id) == target or m.display_name.lower() == target:
+            return m
+            
+    # 2. البحث المرن الجزئي (في حال وجود فارق بسيط بالأحرف)
+    for m in guild.members:
+        if target in m.name.lower() or target in m.display_name.lower():
+            return m
+            
+    return None
+
+class ReasonModal(Modal):
+    def __init__(self, action_type, applicant_username, view_instance):
+        title_text = "سبب القبول" if action_type == "accept" else "سبب الرفض"
+        super().__init__(title=title_text)
+        self.action_type = action_type
+        self.applicant_username = applicant_username
+        self.view_instance = view_instance
+
+        self.reason_input = TextInput(
+            label="السبب",
+            style=discord.TextStyle.paragraph,
+            placeholder="اكتب السبب هنا...",
+            required=True,
+            max_length=300
+        )
+        self.add_item(self.reason_input)
+
+    async def on_submit(self, interaction: discord.Interaction):
+        guild = interaction.guild
+        admin_mention = interaction.user.mention
+        reason = self.reason_input.value.strip()
+        
+        member = find_member_flexible(guild, self.applicant_username)
+
+        if self.action_type == "accept":
+            if member:
+                role = guild.get_role(ROLE_ID)
+                if role:
+                    await member.add_roles(role)
+                try:
+                    await member.send(
+                        f"🎉 **مبارك! تم قبول تقديمك في عائلة آل تارغيريان.**\n"
+                        f"👑 **المشرف المسؤول:** {admin_mention}\n"
+                        f"📝 **السبب:** {reason}\n"
+                        f"✨ تم إعطاؤك الرتبة بنجاح."
+                    )
+                except Exception:
+                    pass
+                
+                self.view_instance.disable_all_items()
+                await interaction.response.edit_message(
+                    content=(
+                        f"✅ **تم قبول التقديم الخاص بـ:** {member.mention}\n"
+                        f"👑 **بواسطة المشرف المسؤول:** {admin_mention}\n"
+                        f"📝 **السبب:** {reason}"
+                    ),
+                    view=self.view_instance
+                )
+            else:
+                await interaction.response.send_message(
+                    f"⚠️ لم يتم العثور على `{self.applicant_username}` في السيرفر! تأكد من كتابة اليوزر بدقة.", 
+                    ephemeral=True
+                )
+
+        elif self.action_type == "reject":
+            if member:
+                try:
+                    await member.send(
+                        f"❌ **للأسف، تم رفض تقديمك للانضمام إلى آل تارغيريان.**\n"
+                        f"🛑 **المشرف المسؤول:** {admin_mention}\n"
+                        f"📝 **السبب:** {reason}"
+                    )
+                except Exception:
+                    pass
+                
+                self.view_instance.disable_all_items()
+                await interaction.response.edit_message(
+                    content=(
+                        f"❌ **تم رفض التقديم الخاص بـ:** {member.mention}\n"
+                        f"🛑 **بواسطة المشرف المسؤول:** {admin_mention}\n"
+                        f"📝 **السبب:** {reason}"
+                    ),
+                    view=self.view_instance
+                )
+            else:
+                self.view_instance.disable_all_items()
+                await interaction.response.edit_message(
+                    content=(
+                        f"❌ **تم رفض التقديم الخاص بـ:** `{self.applicant_username}` (العضو ليس بالسيرفر)\n"
+                        f"🛑 **بواسطة المشرف المسؤول:** {admin_mention}\n"
+                        f"📝 **السبب:** {reason}"
+                    ),
+                    view=self.view_instance
+                )
+
 class ApplicationView(View):
     def __init__(self, applicant_username):
         super().__init__(timeout=None)
@@ -21,65 +121,13 @@ class ApplicationView(View):
 
     @discord.ui.button(label="قبول ✅", style=discord.ButtonStyle.success, custom_id="accept_btn")
     async def accept(self, interaction: discord.Interaction, button: Button):
-        guild = interaction.guild
-        admin_mention = interaction.user.mention
-        
-        member = discord.utils.find(
-            lambda m: m.name.lower() == self.applicant_username 
-            or str(m.id) == self.applicant_username 
-            or m.display_name.lower() == self.applicant_username, 
-            guild.members
-        )
-        
-        if member:
-            role = guild.get_role(ROLE_ID)
-            if role:
-                await member.add_roles(role)
-            try:
-                await member.send(f"🎉 **مبارك! تم قبول تقديمك في عائلة آل تارغيريان.**\nتم قبولك بواسطة المشرف المسؤول: {admin_mention}\nوتم إعطاؤك الرتبة بنجاح.")
-            except Exception:
-                pass
-            
-            await interaction.response.send_message(f"✅ تم قبول {member.mention} وإعطائه الرتبة.", ephemeral=True)
-            self.disable_all_items()
-            await interaction.message.edit(
-                content=f"✅ **تم قبول التقديم الخاص بـ:** {member.mention}\n👑 **تم قبوله بواسطة المشرف المسؤول:** {admin_mention}", 
-                view=self
-            )
-        else:
-            await interaction.response.send_message(f"⚠️ لم يتم العثور على `{self.applicant_username}` في السيرفر! تأكد من كتابة اليوزر بدقة.", ephemeral=True)
+        modal = ReasonModal(action_type="accept", applicant_username=self.applicant_username, view_instance=self)
+        await interaction.response.send_modal(modal)
 
     @discord.ui.button(label="رفض ❌", style=discord.ButtonStyle.danger, custom_id="reject_btn")
     async def reject(self, interaction: discord.Interaction, button: Button):
-        guild = interaction.guild
-        admin_mention = interaction.user.mention
-        
-        member = discord.utils.find(
-            lambda m: m.name.lower() == self.applicant_username 
-            or str(m.id) == self.applicant_username 
-            or m.display_name.lower() == self.applicant_username, 
-            guild.members
-        )
-        
-        if member:
-            try:
-                await member.send(f"❌ **للأسف، تم رفض تقديمك للانضمام إلى آل تارغيريان.**\nتم رفضك بواسطة المشرف المسؤول: {admin_mention}")
-            except Exception:
-                pass
-            
-            await interaction.response.send_message(f"❌ تم رفض {member.mention} وإرسال رسالة بالخاص.", ephemeral=True)
-            self.disable_all_items()
-            await interaction.message.edit(
-                content=f"❌ **تم رفض التقديم الخاص بـ:** {member.mention}\n🛑 **تم رفضه بواسطة المشرف المسؤول:** {admin_mention}", 
-                view=self
-            )
-        else:
-            await interaction.response.send_message("❌ تم رفض الطلب (العضو غير موجود بالسيرفر).", ephemeral=True)
-            self.disable_all_items()
-            await interaction.message.edit(
-                content=f"❌ **تم رفض التقديم الخاص بـ:** `{self.applicant_username}`\n🛑 **تم رفضه بواسطة المشرف المسؤول:** {admin_mention}", 
-                view=self
-            )
+        modal = ReasonModal(action_type="reject", applicant_username=self.applicant_username, view_instance=self)
+        await interaction.response.send_modal(modal)
 
 @bot.event
 async def on_ready():
