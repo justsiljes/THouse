@@ -38,7 +38,7 @@ async def find_member_flexible(guild, input_username):
 
 class ReasonModal(Modal):
     def __init__(self, action_type, applicant_username, view_instance):
-        title_text = "سبب القبول" if action_type == "accept" else "سبب الرفض"
+        title_text = "سبب التفعيل والقبول" if action_type == "accept" else "سبب عدم التفعيل / الرفض"
         super().__init__(title=title_text)
         self.action_type = action_type
         self.applicant_username = applicant_username
@@ -63,7 +63,7 @@ class ReasonModal(Modal):
         member = await find_member_flexible(guild, self.applicant_username)
         applicant_display = member.mention if member else f"`{self.applicant_username}`"
 
-        # تعطيل أزرار رسالة التحكم (الرسالة الثانية)
+        # تعطيل الأزرار بعد اتخاذ القرار
         for child in self.view_instance.children:
             child.disabled = True
         try:
@@ -72,7 +72,7 @@ class ReasonModal(Modal):
             print(f"Edit message error: {e}")
 
         if self.action_type == "accept":
-            # 1. إعطاء الرتبة للمستفيد
+            # 1. إعطاء رتبة التفعيل
             if member:
                 role = guild.get_role(ROLE_ID)
                 if role:
@@ -81,69 +81,68 @@ class ReasonModal(Modal):
                     except Exception as e:
                         print(f"Failed to add role: {e}")
                 
-                # 2. إرسال للخاص عند القبول مع المنشن
+                # 2. إرسال للخاص عند التفعيل
                 try:
                     await member.send(
-                        f"🎉 أهلاً بك {member.mention}!\n"
-                        f"**تم قبول تقديمك وتفعيلك بنجاح في سيرفر آل تارغيريان.**\n"
-                        f"✨ تم إعطاؤك الرتبة بالسيرفر."
+                        f"🐉 **أهلاً بك {member.mention} في سيرفر آل تارغيريان!**\n\n"
+                        f"✅ **تم قبولك وتفعيل حسابك بنجاح.**\n"
+                        f"✨ تم إعطاؤك الرتبة الخاصة بالتفعيل في السيرفر."
                     )
                 except Exception as e:
                     print(f"Failed to send DM: {e}")
 
-            # 3. إرسال الرسالة الثالثة (Log) في روم التقديمات
+            # 3. إرسال الرسالة الثالثة (سجل التفعيل) في الروم
             await interaction.channel.send(
-                f"✅ **[ سجل القرار - قبول ]**\n"
-                f"👤 **المتقدم:** {applicant_display}\n"
+                f"🐉 **[ سجل القبول والتفعيل - آل تارغيريان ]**\n"
+                f"👤 **العضو:** {applicant_display}\n"
                 f"👑 **المشرف المسؤول:** {admin_mention}\n"
-                f"📝 **سبب القبول:** {reason}"
+                f"📝 **سبب القبول والتفعيل:** {reason}"
             )
-            await interaction.followup.send(f"✅ تم قبول الطلب وتفعيل العضو بنجاح.", ephemeral=True)
+            await interaction.followup.send(f"✅ تم تفعيل العضو وإعطائه الرتبة بنجاح.", ephemeral=True)
 
         elif self.action_type == "reject":
-            # 1. إرسال للخاص عند الرفض مع المنشن والسبب والمشرف المسؤول
+            # 1. إرسال للخاص عند الرفض
             if member:
                 try:
                     await member.send(
-                        f"❌ أهلاً بك {member.mention}،\n"
-                        f"**للأسف تم رفض تقديمك للانضمام إلى سيرفر آل تارغيريان.**\n"
+                        f"🐉 **أهلاً بك {member.mention}،**\n\n"
+                        f"❌ **للأسف تم تعذّر تفعيل حسابك في سيرفر آل تارغيريان.**\n"
                         f"🛑 **المشرف المسؤول:** {admin_mention}\n"
                         f"📝 **سبب الرفض:** {reason}"
                     )
                 except Exception as e:
                     print(f"Failed to send DM: {e}")
 
-            # 2. إرسال الرسالة الثالثة (Log) في روم التقديمات
+            # 2. إرسال الرسالة الثالثة (سجل الرفض) في الروم
             await interaction.channel.send(
-                f"❌ **[ سجل القرار - رفض ]**\n"
+                f"🐉 **[ سجل الرفض - آل تارغيريان ]**\n"
                 f"👤 **المتقدم:** {applicant_display}\n"
                 f"🛑 **المشرف المسؤول:** {admin_mention}\n"
                 f"📝 **سبب الرفض:** {reason}"
             )
-            await interaction.followup.send(f"❌ تم رفض الطلب وإرسال التنبيه.", ephemeral=True)
+            await interaction.followup.send(f"❌ تم رفض التفعيل وإرسال التفاصيل.", ephemeral=True)
 
 class ApplicationView(View):
     def __init__(self, applicant_username):
         super().__init__(timeout=None)
         self.applicant_username = applicant_username.strip().lower()
 
-    @discord.ui.button(label="قبول ✅", style=discord.ButtonStyle.success, custom_id="accept_btn")
+    @discord.ui.button(label="تفعيل وتوثيق ✅", style=discord.ButtonStyle.success, custom_id="accept_btn")
     async def accept(self, interaction: discord.Interaction, button: Button):
         modal = ReasonModal(action_type="accept", applicant_username=self.applicant_username, view_instance=self)
         await interaction.response.send_modal(modal)
 
-    @discord.ui.button(label="رفض ❌", style=discord.ButtonStyle.danger, custom_id="reject_btn")
+    @discord.ui.button(label="رفض التفعيل ❌", style=discord.ButtonStyle.danger, custom_id="reject_btn")
     async def reject(self, interaction: discord.Interaction, button: Button):
         modal = ReasonModal(action_type="reject", applicant_username=self.applicant_username, view_instance=self)
         await interaction.response.send_modal(modal)
 
 @bot.event
 async def on_ready():
-    print(f'تم تشغيل البوت بنجاح باسم: {bot.user}')
+    print(f'تم تشغيل بوت تفعيل آل تارغيريان بنجاح: {bot.user}')
 
 @bot.event
 async def on_message(message):
-    # تحقق من الروم ومصدر الرسالة (Webhook)
     if message.channel.id == APPLICATIONS_CHANNEL_ID and message.webhook_id:
         if message.embeds:
             embed = message.embeds[0]
@@ -158,18 +157,17 @@ async def on_message(message):
                 applicant_username = embed.fields[2].value
 
             if applicant_username:
-                # إنشاء الرسالة الثانية الخاصة بالتحكم بالطلب
                 view = ApplicationView(applicant_username)
                 await message.channel.send(
-                    content=f"⚙️ **التحكم بالطلب الخاص بـ:** `{applicant_username}`", 
+                    content=f"🐉 **لوحة تفعيل طلب العضو:** `{applicant_username}`", 
                     view=view
                 )
 
     await bot.process_commands(message)
 
-# Web Server لضمان عمل البوت على منصات مثل Render
+# Web Server لتجنب توقف البوت على منصات الإستضافة
 async def handle_ping(request):
-    return web.Response(text="Bot is running!")
+    return web.Response(text="Targaryen Bot is running!")
 
 async def start_web_server():
     app = web.Application()
