@@ -39,9 +39,9 @@ class ApplicationView(View):
                 pass
             await interaction.response.send_message(f"✅ تم قبول {member.mention} وإعطائه الرتبة.", ephemeral=True)
             self.disable_all_items()
-            await interaction.message.edit(view=self)
+            await interaction.message.edit(content=f"✅ **تم قبول التقديم الخاص بـ:** {member.mention}", view=self)
         else:
-            await interaction.response.send_message(f"⚠️ لم يتم العثور على `{self.applicant_username}` في السيرفر!", ephemeral=True)
+            await interaction.response.send_message(f"⚠️ لم يتم العثور على `{self.applicant_username}` في السيرفر! تأكد من كتابة اليوزر بدقة.", ephemeral=True)
 
     @discord.ui.button(label="رفض ❌", style=discord.ButtonStyle.danger, custom_id="reject_btn")
     async def reject(self, interaction: discord.Interaction, button: Button):
@@ -59,11 +59,12 @@ class ApplicationView(View):
             except Exception:
                 pass
             await interaction.response.send_message(f"❌ تم رفض {member.mention} وإرسال رسالة بالخاص.", ephemeral=True)
+            self.disable_all_items()
+            await interaction.message.edit(content=f"❌ **تم رفض التقديم الخاص بـ:** {member.mention}", view=self)
         else:
             await interaction.response.send_message("❌ تم رفض الطلب (العضو غير موجود بالسيرفر).", ephemeral=True)
-            
-        self.disable_all_items()
-        await interaction.message.edit(view=self)
+            self.disable_all_items()
+            await interaction.message.edit(content=f"❌ **تم رفض التقديم الخاص بـ:** `{self.applicant_username}`", view=self)
 
 @bot.event
 async def on_ready():
@@ -71,21 +72,28 @@ async def on_ready():
 
 @bot.event
 async def on_message(message):
-    # التأكد من القناة وأن الرسالة قادمة من الـ Webhook
+    # الفحص عند وصول رسالة من الويب هوك في روم التقديمات
     if message.channel.id == APPLICATIONS_CHANNEL_ID and message.webhook_id:
         if message.embeds:
             embed = message.embeds[0]
             applicant_username = None
             
             for field in embed.fields:
-                # الفحص التكيفي لاسم الحقل (يشمل الكلمات المسبوقة بإيموجي)
                 if field.name and "ديسكورد" in field.name:
                     applicant_username = field.value
                     break
             
+            # إذا لم يجد اسم الحقل مباشرة يقرأ القيمة الثالثة تلقائياً
+            if not applicant_username and len(embed.fields) >= 3:
+                applicant_username = embed.fields[2].value
+
             if applicant_username:
                 view = ApplicationView(applicant_username)
-                await message.edit(view=view)
+                # إرسال رسالة جديدة منفصلة تحتوي على أزرار التحكم
+                await message.channel.send(
+                    content=f"⚙️ **التحكم بالطلب الخاص بـ:** `{applicant_username}`", 
+                    view=view
+                )
 
     await bot.process_commands(message)
 
@@ -104,7 +112,7 @@ async def start_web_server():
 
 async def main():
     await start_web_server()
-    # استبدل التوكن هنا
+    # ضع التوكن الخاص بك هنا
     await bot.start("MTUzNTU5NTM4Mzg2OTI4NDQyMw.GtrwhM.pxtKfET5DPFfZIIV-Vi3DUl_Z_qYynoHKETHr4")
 
 if __name__ == "__main__":
