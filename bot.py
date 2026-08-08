@@ -62,25 +62,26 @@ class ReasonModal(Modal):
                     except Exception:
                         pass
                 
-                # الخاص عند القبول: رسالة قبوله فقط بدون سبب
+                # الخاص عند القبول: منشن المتقدم ورسالة الترحيب
                 try:
                     await member.send(
-                        "🎉 **مبارك! تم قبول تقديمك في عائلة آل تارغيريان.**\n"
-                        "✨ تم إعطاؤك الرتبة بنجاح."
+                        f"🎉 أهلاً بك {member.mention}! **تم قبول تقديمك في عائلة آل تارغيريان.**\n"
+                        f"✨ تم إعطاؤك الرتبة بنجاح."
                     )
                 except Exception:
                     pass
                 
-                # في روم التقديمات: تعديل الرسالة لبيان المشرف المسؤول والسبب
+                # 1. تعطيل الأزرار في رسالة التحكم
                 self.view_instance.disable_all_items()
-                await interaction.message.edit(
-                    content=(
-                        f"✅ **تم قبول التقديم الخاص بـ:** {member.mention}\n"
-                        f"👑 **المشرف المسؤول:** {admin_mention}\n"
-                        f"📝 **سبب القبول:** {reason}"
-                    ),
-                    view=self.view_instance
+                await interaction.message.edit(view=self.view_instance)
+
+                # 2. إرسال رسالة جديدة ثالثة في روم التقديمات بالنتيجة والمشرف والسبب
+                await interaction.channel.send(
+                    f"✅ **حالة الطلب:** تم القبول لـ {member.mention}\n"
+                    f"👑 **المشرف المسؤول:** {admin_mention}\n"
+                    f"📝 **سبب القبول:** {reason}"
                 )
+
                 await interaction.followup.send(f"✅ تم قبول {member.mention} بنجاح.", ephemeral=True)
             else:
                 await interaction.followup.send(
@@ -90,37 +91,38 @@ class ReasonModal(Modal):
 
         elif self.action_type == "reject":
             if member:
-                # الخاص عند الرفض: يصل السبب والمشرف المسؤول
+                # الخاص عند الرفض: منشن المتقدم والمشرف والسبب
                 try:
                     await member.send(
-                        f"❌ **للأسف، تم رفض تقديمك للانضمام إلى آل تارغيريان.**\n"
+                        f"❌ أهلاً بك {member.mention}، **للأسف تم رفض تقديمك للانضمام إلى آل تارغيريان.**\n"
                         f"🛑 **المشرف المسؤول:** {admin_mention}\n"
                         f"📝 **سبب الرفض:** {reason}"
                     )
                 except Exception:
                     pass
                 
-                # في روم التقديمات: تعديل الرسالة لبيان المشرف المسؤول والسبب
+                # 1. تعطيل الأزرار في رسالة التحكم
                 self.view_instance.disable_all_items()
-                await interaction.message.edit(
-                    content=(
-                        f"❌ **تم رفض التقديم الخاص بـ:** {member.mention}\n"
-                        f"🛑 **المشرف المسؤول:** {admin_mention}\n"
-                        f"📝 **سبب الرفض:** {reason}"
-                    ),
-                    view=self.view_instance
+                await interaction.message.edit(view=self.view_instance)
+
+                # 2. إرسال رسالة جديدة ثالثة في روم التقديمات بالنتيجة والمشرف والسبب
+                await interaction.channel.send(
+                    f"❌ **حالة الطلب:** تم الرفض لـ {member.mention}\n"
+                    f"🛑 **المشرف المسؤول:** {admin_mention}\n"
+                    f"📝 **سبب الرفض:** {reason}"
                 )
+
                 await interaction.followup.send(f"❌ تم رفض {member.mention}.", ephemeral=True)
             else:
                 self.view_instance.disable_all_items()
-                await interaction.message.edit(
-                    content=(
-                        f"❌ **تم رفض التقديم الخاص بـ:** `{self.applicant_username}` (العضو ليس بالسيرفر)\n"
-                        f"🛑 **المشرف المسؤول:** {admin_mention}\n"
-                        f"📝 **سبب الرفض:** {reason}"
-                    ),
-                    view=self.view_instance
+                await interaction.message.edit(view=self.view_instance)
+
+                await interaction.channel.send(
+                    f"❌ **حالة الطلب:** تم الرفض لـ `{self.applicant_username}` (العضو ليس بالسيرفر)\n"
+                    f"🛑 **المشرف المسؤول:** {admin_mention}\n"
+                    f"📝 **سبب الرفض:** {reason}"
                 )
+
                 await interaction.followup.send("❌ تم الرفض (العضو غير موجود بالسيرفر).", ephemeral=True)
 
 class ApplicationView(View):
