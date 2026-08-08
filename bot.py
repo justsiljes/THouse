@@ -19,18 +19,15 @@ async def find_member_flexible(guild, input_username):
     target = input_username.strip().lower()
     clean_target = target.replace(".", "").replace("_", "")
     
-    # محاولة جلب الأعضاء لضمان وجود القائمة
     try:
         await guild.chunk()
     except Exception:
         pass
 
-    # 1. البحث بالتطابق المباشر أو الـ ID
     for m in guild.members:
         if m.name.lower() == target or str(m.id) == target or m.display_name.lower() == target:
             return m
 
-    # 2. البحث بالتطابق المرن
     for m in guild.members:
         clean_name = m.name.lower().replace(".", "").replace("_", "")
         clean_display = m.display_name.lower().replace(".", "").replace("_", "")
@@ -67,63 +64,63 @@ class ReasonModal(Modal):
         applicant_display = member.mention if member else f"`{self.applicant_username}`"
 
         # تعطيل أزرار رسالة التحكم (الرسالة الثانية)
-        self.view_instance.disable_all_items()
+        for child in self.view_instance.children:
+            child.disabled = True
         try:
             await interaction.message.edit(view=self.view_instance)
         except Exception as e:
             print(f"Edit message error: {e}")
 
         if self.action_type == "accept":
-            # 1. إعطاء الرتبة
+            # 1. إعطاء الرتبة للمستفيد
             if member:
                 role = guild.get_role(ROLE_ID)
                 if role:
                     try:
                         await member.add_roles(role)
-                        print(f"Role added to {member.name}")
                     except Exception as e:
                         print(f"Failed to add role: {e}")
                 
-                # 2. إرسال للخاص عند القبول
+                # 2. إرسال للخاص عند القبول مع المنشن
                 try:
                     await member.send(
                         f"🎉 أهلاً بك {member.mention}!\n"
-                        f"**تم قبول تقديمك وتفعيلك بنجاح في عائلة آل تارغيريان.**\n"
+                        f"**تم قبول تقديمك وتفعيلك بنجاح في سيرفر آل تارغيريان.**\n"
                         f"✨ تم إعطاؤك الرتبة بالسيرفر."
                     )
                 except Exception as e:
                     print(f"Failed to send DM: {e}")
 
-            # 3. إرسال الرسالة الثالثة (السجل) في روم التقديمات
+            # 3. إرسال الرسالة الثالثة (Log) في روم التقديمات
             await interaction.channel.send(
                 f"✅ **[ سجل القرار - قبول ]**\n"
                 f"👤 **المتقدم:** {applicant_display}\n"
                 f"👑 **المشرف المسؤول:** {admin_mention}\n"
                 f"📝 **سبب القبول:** {reason}"
             )
-            await interaction.followup.send(f"✅ تم قبول الطلب وإعطاء الرتبة بنجاح.", ephemeral=True)
+            await interaction.followup.send(f"✅ تم قبول الطلب وتفعيل العضو بنجاح.", ephemeral=True)
 
         elif self.action_type == "reject":
-            # 1. إرسال للخاص عند الرفض
+            # 1. إرسال للخاص عند الرفض مع المنشن والسبب والمشرف المسؤول
             if member:
                 try:
                     await member.send(
                         f"❌ أهلاً بك {member.mention}،\n"
-                        f"**للأسف تم رفض تقديمك للانضمام إلى آل تارغيريان.**\n"
+                        f"**للأسف تم رفض تقديمك للانضمام إلى سيرفر آل تارغيريان.**\n"
                         f"🛑 **المشرف المسؤول:** {admin_mention}\n"
                         f"📝 **سبب الرفض:** {reason}"
                     )
                 except Exception as e:
                     print(f"Failed to send DM: {e}")
 
-            # 2. إرسال الرسالة الثالثة (السجل) في روم التقديمات
+            # 2. إرسال الرسالة الثالثة (Log) في روم التقديمات
             await interaction.channel.send(
                 f"❌ **[ سجل القرار - رفض ]**\n"
                 f"👤 **المتقدم:** {applicant_display}\n"
                 f"🛑 **المشرف المسؤول:** {admin_mention}\n"
                 f"📝 **سبب الرفض:** {reason}"
             )
-            await interaction.followup.send(f"❌ تم رفض الطلب.", ephemeral=True)
+            await interaction.followup.send(f"❌ تم رفض الطلب وإرسال التنبيه.", ephemeral=True)
 
 class ApplicationView(View):
     def __init__(self, applicant_username):
@@ -146,6 +143,7 @@ async def on_ready():
 
 @bot.event
 async def on_message(message):
+    # تحقق من الروم ومصدر الرسالة (Webhook)
     if message.channel.id == APPLICATIONS_CHANNEL_ID and message.webhook_id:
         if message.embeds:
             embed = message.embeds[0]
@@ -160,6 +158,7 @@ async def on_message(message):
                 applicant_username = embed.fields[2].value
 
             if applicant_username:
+                # إنشاء الرسالة الثانية الخاصة بالتحكم بالطلب
                 view = ApplicationView(applicant_username)
                 await message.channel.send(
                     content=f"⚙️ **التحكم بالطلب الخاص بـ:** `{applicant_username}`", 
@@ -168,7 +167,7 @@ async def on_message(message):
 
     await bot.process_commands(message)
 
-# Web Server لتجنب توقف Render
+# Web Server لضمان عمل البوت على منصات مثل Render
 async def handle_ping(request):
     return web.Response(text="Bot is running!")
 
