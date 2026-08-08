@@ -62,21 +62,21 @@ class ReasonModal(Modal):
                     except Exception:
                         pass
                 
-                # إرسال رسالة القبول للخاص (بدون سبب القبول)
+                # الخاص عند القبول: رسالة قبوله فقط بدون سبب
                 try:
                     await member.send(
-                        f"🎉 **مبارك! تم قبول تقديمك في عائلة آل تارغيريان.**\n"
-                        f"✨ تم إعطاؤك الرتبة بنجاح."
+                        "🎉 **مبارك! تم قبول تقديمك في عائلة آل تارغيريان.**\n"
+                        "✨ تم إعطاؤك الرتبة بنجاح."
                     )
                 except Exception:
                     pass
                 
-                # تحديث الرسالة في الروم للكل وإبراز السبب والمشرف المسؤول
+                # في روم التقديمات: تعديل الرسالة لبيان المشرف المسؤول والسبب
                 self.view_instance.disable_all_items()
                 await interaction.message.edit(
                     content=(
                         f"✅ **تم قبول التقديم الخاص بـ:** {member.mention}\n"
-                        f"👑 **بواسطة المشرف المسؤول:** {admin_mention}\n"
+                        f"👑 **المشرف المسؤول:** {admin_mention}\n"
                         f"📝 **سبب القبول:** {reason}"
                     ),
                     view=self.view_instance
@@ -90,7 +90,7 @@ class ReasonModal(Modal):
 
         elif self.action_type == "reject":
             if member:
-                # إرسال رسالة الرفض مع السبب للخاص
+                # الخاص عند الرفض: يصل السبب والمشرف المسؤول
                 try:
                     await member.send(
                         f"❌ **للأسف، تم رفض تقديمك للانضمام إلى آل تارغيريان.**\n"
@@ -100,12 +100,12 @@ class ReasonModal(Modal):
                 except Exception:
                     pass
                 
-                # تحديث الرسالة في الروم وإظهار السبب والمشرف المسؤول
+                # في روم التقديمات: تعديل الرسالة لبيان المشرف المسؤول والسبب
                 self.view_instance.disable_all_items()
                 await interaction.message.edit(
                     content=(
                         f"❌ **تم رفض التقديم الخاص بـ:** {member.mention}\n"
-                        f"🛑 **بواسطة المشرف المسؤول:** {admin_mention}\n"
+                        f"🛑 **المشرف المسؤول:** {admin_mention}\n"
                         f"📝 **سبب الرفض:** {reason}"
                     ),
                     view=self.view_instance
@@ -116,7 +116,7 @@ class ReasonModal(Modal):
                 await interaction.message.edit(
                     content=(
                         f"❌ **تم رفض التقديم الخاص بـ:** `{self.applicant_username}` (العضو ليس بالسيرفر)\n"
-                        f"🛑 **بواسطة المشرف المسؤول:** {admin_mention}\n"
+                        f"🛑 **المشرف المسؤول:** {admin_mention}\n"
                         f"📝 **سبب الرفض:** {reason}"
                     ),
                     view=self.view_instance
