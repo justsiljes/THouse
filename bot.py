@@ -45,7 +45,6 @@ class ReasonModal(Modal):
         self.add_item(self.reason_input)
 
     async def on_submit(self, interaction: discord.Interaction):
-        # تأجيل الرد فوراً لمنع انتهاء مهلة الـ Modal (3 ثوانٍ)
         await interaction.response.defer(ephemeral=True)
 
         guild = interaction.guild
@@ -62,22 +61,23 @@ class ReasonModal(Modal):
                         await member.add_roles(role)
                     except Exception:
                         pass
+                
+                # إرسال رسالة القبول للخاص (بدون سبب القبول)
                 try:
                     await member.send(
                         f"🎉 **مبارك! تم قبول تقديمك في عائلة آل تارغيريان.**\n"
-                        f"👑 **المشرف المسؤول:** {admin_mention}\n"
-                        f"📝 **السبب:** {reason}\n"
                         f"✨ تم إعطاؤك الرتبة بنجاح."
                     )
                 except Exception:
                     pass
                 
+                # تحديث الرسالة في الروم للكل وإبراز السبب والمشرف المسؤول
                 self.view_instance.disable_all_items()
                 await interaction.message.edit(
                     content=(
                         f"✅ **تم قبول التقديم الخاص بـ:** {member.mention}\n"
                         f"👑 **بواسطة المشرف المسؤول:** {admin_mention}\n"
-                        f"📝 **السبب:** {reason}"
+                        f"📝 **سبب القبول:** {reason}"
                     ),
                     view=self.view_instance
                 )
@@ -90,21 +90,23 @@ class ReasonModal(Modal):
 
         elif self.action_type == "reject":
             if member:
+                # إرسال رسالة الرفض مع السبب للخاص
                 try:
                     await member.send(
                         f"❌ **للأسف، تم رفض تقديمك للانضمام إلى آل تارغيريان.**\n"
                         f"🛑 **المشرف المسؤول:** {admin_mention}\n"
-                        f"📝 **السبب:** {reason}"
+                        f"📝 **سبب الرفض:** {reason}"
                     )
                 except Exception:
                     pass
                 
+                # تحديث الرسالة في الروم وإظهار السبب والمشرف المسؤول
                 self.view_instance.disable_all_items()
                 await interaction.message.edit(
                     content=(
                         f"❌ **تم رفض التقديم الخاص بـ:** {member.mention}\n"
                         f"🛑 **بواسطة المشرف المسؤول:** {admin_mention}\n"
-                        f"📝 **السبب:** {reason}"
+                        f"📝 **سبب الرفض:** {reason}"
                     ),
                     view=self.view_instance
                 )
@@ -115,7 +117,7 @@ class ReasonModal(Modal):
                     content=(
                         f"❌ **تم رفض التقديم الخاص بـ:** `{self.applicant_username}` (العضو ليس بالسيرفر)\n"
                         f"🛑 **بواسطة المشرف المسؤول:** {admin_mention}\n"
-                        f"📝 **السبب:** {reason}"
+                        f"📝 **سبب الرفض:** {reason}"
                     ),
                     view=self.view_instance
                 )
