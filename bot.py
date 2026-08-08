@@ -18,16 +18,16 @@ def find_member_flexible(guild, input_username):
     clean_input = input_username.strip().lower().replace(".", "").replace("_", "")
     target = input_username.strip().lower()
     
-    # 1. المطابقة المباشرة
+    # 1. مطابقة دقيقة
     for m in guild.members:
         if m.name.lower() == target or str(m.id) == target or m.display_name.lower() == target:
             return m
             
-    # 2. المطابقة المرنة بدون رموز وقاطعات
+    # 2. مطابقة مرنة
     for m in guild.members:
         clean_name = m.name.lower().replace(".", "").replace("_", "")
         clean_display = m.display_name.lower().replace(".", "").replace("_", "")
-        if clean_input in clean_name or clean_input in clean_display or clean_name in clean_input:
+        if clean_input and (clean_input in clean_name or clean_input in clean_display or clean_name in clean_input):
             return m
             
     return None
@@ -57,9 +57,9 @@ class ReasonModal(Modal):
         reason = self.reason_input.value.strip()
         
         member = find_member_flexible(guild, self.applicant_username)
-        applicant_mention = member.mention if member else f"`{self.applicant_username}`"
+        applicant_display = member.mention if member else f"`{self.applicant_username}`"
 
-        # تعطيل أزرار رسالة التحكم فوراً
+        # تعطيل أزرار رسالة التحكم (الرسالة الثانية)
         self.view_instance.disable_all_items()
         try:
             await interaction.message.edit(view=self.view_instance)
@@ -67,35 +67,37 @@ class ReasonModal(Modal):
             pass
 
         if self.action_type == "accept":
+            # 1. إضافة الرتبة للمتقدم
             if member:
                 role = guild.get_role(ROLE_ID)
                 if role:
                     try:
                         await member.add_roles(role)
-                    except Exception:
-                        pass
-                
-                # إرسال للخاص مع منشن حقيقي للعضو
+                    except Exception as e:
+                        print(f"Error adding role: {e}")
+
+                # 2. إرسال للخاص (عند القبول)
                 try:
                     await member.send(
                         f"🎉 أهلاً بك {member.mention}!\n"
-                        f"**تم قبول تقديمك في عائلة آل تارغيريان.**\n"
-                        f"✨ تم إعطاؤك الرتبة بنجاح."
+                        f"**تم قبول تقديمك وتفعيلك بنجاح في عائلة آل تارغيريان.**\n"
+                        f"✨ تم إعطاؤك الرتبة بالسيرفر."
                     )
-                except Exception:
-                    pass
+                except Exception as e:
+                    print(f"Error sending DM: {e}")
 
-            # إرسال الرسالة الثالثة في روم التقديمات دائماً
+            # 3. إرسال الرسالة الثالثة (Log) في روم التقديمات
             await interaction.channel.send(
-                f"✅ **حالة الطلب:** تم القبول لـ {applicant_mention}\n"
+                f"✅ **[ سجل القرار - قبول ]**\n"
+                f"👤 **المتقدم:** {applicant_display}\n"
                 f"👑 **المشرف المسؤول:** {admin_mention}\n"
                 f"📝 **سبب القبول:** {reason}"
             )
-            await interaction.followup.send(f"✅ تم القبول بنجاح لـ {applicant_mention}.", ephemeral=True)
+            await interaction.followup.send(f"✅ تم قبول الطلب بنجاح.", ephemeral=True)
 
         elif self.action_type == "reject":
+            # 1. إرسال للخاص (عند الرفض)
             if member:
-                # إرسال للخاص مع المنشن والمشرف والسبب
                 try:
                     await member.send(
                         f"❌ أهلاً بك {member.mention}،\n"
@@ -103,16 +105,17 @@ class ReasonModal(Modal):
                         f"🛑 **المشرف المسؤول:** {admin_mention}\n"
                         f"📝 **سبب الرفض:** {reason}"
                     )
-                except Exception:
-                    pass
+                except Exception as e:
+                    print(f"Error sending DM: {e}")
 
-            # إرسال الرسالة الثالثة في روم التقديمات دائماً
+            # 2. إرسال الرسالة الثالثة (Log) في روم التقديمات
             await interaction.channel.send(
-                f"❌ **حالة الطلب:** تم الرفض لـ {applicant_mention}\n"
+                f"❌ **[ سجل القرار - رفض ]**\n"
+                f"👤 **المتقدم:** {applicant_display}\n"
                 f"🛑 **المشرف المسؤول:** {admin_mention}\n"
                 f"📝 **سبب الرفض:** {reason}"
             )
-            await interaction.followup.send(f"❌ تم الرفض لـ {applicant_mention}.", ephemeral=True)
+            await interaction.followup.send(f"❌ تم رفض الطلب.", ephemeral=True)
 
 class ApplicationView(View):
     def __init__(self, applicant_username):
